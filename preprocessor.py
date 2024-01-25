@@ -206,7 +206,7 @@ for timestep in range(9,(burn_duration*steps_per_hour+1)):
     
 
 
-#tensor=tf.convert_to_tensor(np.array(channels),dtype=tf.float32)
+#tensor=tf.convert_to_tensor(np.array(channels_EPD),dtype=tf.float32)
 #tf.saved_model.save(tensor, os.path.join(rootPath, "inputTensor.tsr"))
 
 

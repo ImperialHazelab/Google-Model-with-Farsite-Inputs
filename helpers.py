@@ -4,6 +4,7 @@ from typing import Dict, Tuple, List, Text
 import os
 from shapely import geometry
 from shapely.prepared import prep
+import fiona
 
 class Farsite2Google:
     
