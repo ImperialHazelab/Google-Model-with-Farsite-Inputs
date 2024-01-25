@@ -6,7 +6,6 @@ from helpers import Farsite2Google
 import matplotlib.pyplot as pl
 from shapely.geometry import shape
 import fiona
-import tensorflow as tf
 
 rootPath = "D:/OneDrive - Imperial College London/Imperial/ME4/FYP/GeneratorFiles/bananaboat/"
 moistureFiles = "fms"
@@ -126,7 +125,7 @@ timestep_unchanging_channels = np.concatenate((
                                     continuous_fuel_class),
                                     axis = -1);                     "All the channels that never change"
 
-channels=np.ndarray((1,burn_duration*steps_per_hour,np.shape(fuel)[0],np.shape(fuel)[1],17));     "Prepare the 1 x T x H x W x 17 tensor"
+channels_LSTM=np.ndarray((1,burn_duration*steps_per_hour,np.shape(fuel)[0],np.shape(fuel)[1],17));     "Prepare the 1 x T x H x W x 17 tensor"
 channels_EPD=np.ndarray((1,np.shape(fuel)[0],np.shape(fuel)[1],17));                            "Prepare the 1 x H x W x 17 tensor"
 
 front = FarsiteParams.expand_left_and_right_indeces(burnMap)
@@ -134,40 +133,76 @@ vegetation=vegetation - front
 previous_front = front
 scar = scar + front
 
-channels[0:0,0:0,:,:,0:3] = np.concatenate((vegetation,
+channels_LSTM[0:0,0:0,:,:,0:3] = np.concatenate((vegetation,
                                     previous_front,
                                     scar),
                                         axis = -1)
-channels[0:0,0:0,:,:,3:3] = norm_wind_east[1,:,:,:]
-channels[0:0,0:0,:,:,4:4] = norm_wind_east[1,:,:,:]
-channels[0:0,0:0,:,:,5:17] = timestep_unchanging_channels
+channels_LSTM[0:0,0:0,:,:,3:3] = norm_wind_east[0,:,:,:]
+channels_LSTM[0:0,0:0,:,:,4:4] = norm_wind_east[0,:,:,:]
+channels_LSTM[0:0,0:0,:,:,5:17] = timestep_unchanging_channels
 
 channels_EPD[0:0,:,:,0:3] = np.concatenate((vegetation,
                                     previous_front,
                                     scar),
                                         axis = -1)
-channels_EPD[0:0,:,:,3:3] = norm_wind_east[1,:,:,:]
-channels_EPD[0:0,:,:,4:4] = norm_wind_east[1,:,:,:]
+channels_EPD[0:0,:,:,3:3] = norm_wind_east[0,:,:,:]
+channels_EPD[0:0,:,:,4:4] = norm_wind_east[0,:,:,:]
 channels_EPD[0:0,:,:,5:17] = timestep_unchanging_channels
 
 print("Initial channels have been set up")
 
 #--------------------------RUN THE MODEL ITSELF------------------------------
 
-for i in range(burn_duration*steps_per_hour):
+fire_evolution_EPD = np.ndarray(1,shape(fuel))
+
+for i in range(1,8):
+    """
+    Run the EPD model 8 times to start the EPD model and 
+    prepare inputs for conv_LSTM model
+    """
     front = run_google_EPD_model(channels_EPD)
     
-    vegetation=vegetation - front
-    previous_front = front
-    scar = scar + front
-    
-    channels_EPD[0:0,:,:,0:3] = np.concatenate((vegetation,
-                                        previous_front,
-                                        scar),
-                                            axis = -1)
-    channels_EPD[0:0,:,:,3:3] = norm_wind_east[1,:,:,:]
-    channels_EPD[0:0,:,:,4:4] = norm_wind_east[1,:,:,:]
+    channels_EPD[0:0,:,:,0:0] = channels_EPD[0:0,:,:,0:0] - front
+    channels_EPD[0:0,:,:,1:1] = front
+    channels_EPD[0:0,:,:,2:2] = channels_EPD[0:0,:,:,2:2] + front
+    channels_EPD[0:0,:,:,3:3] = norm_wind_east[i,:,:,:]
+    channels_EPD[0:0,:,:,4:4] = norm_wind_east[i,:,:,:]
     channels_EPD[0:0,:,:,5:17] = timestep_unchanging_channels
+    
+    channels_LSTM[0:0,i,:,:,0:5] = channels_EPD[0:0,:,:,0:5]
+    
+channels_LSTM_timestep=np.ndarray(1,1,shape(fuel),17)
+    
+for timestep in range(9,(burn_duration*steps_per_hour+1)):
+    """
+    Run both models concurrently
+    
+    EPD First
+    """
+    front_EPD = run_google_EPD_model(channels_EPD)
+    
+    channels_EPD[0:0,:,:,0:0] = channels_EPD[0:0,:,:,0:0] - front
+    channels_EPD[0:0,:,:,1:1] = front
+    channels_EPD[0:0,:,:,2:2] = channels_EPD[0:0,:,:,2:2] + front
+    channels_EPD[0:0,:,:,3:3] = norm_wind_east[timestep,:,:,:]
+    channels_EPD[0:0,:,:,4:4] = norm_wind_east[timestep,:,:,:]
+    channels_EPD[0:0,:,:,5:17] = timestep_unchanging_channels
+    
+    """
+    conv_LSTM
+    """
+    front_LSTM = run_google_LSTM_model(channels_LSTM)
+    
+    
+    
+    channels_LSTM_timestep[0:0,0:0,:,:,0:0] = channels_LSTM[0:0,8,:,:,0:0] - front
+    channels_LSTM_timestep[0:0,0:0,:,:,1:1] = front
+    channels_LSTM_timestep[0:0,0:0,:,:,2:2] = channels_LSTM[0:0,8,:,:,2:2] + front
+    channels_LSTM_timestep[0:0,0:0,:,:,3:3] = norm_wind_east[timestep,:,:,:]
+    channels_LSTM_timestep[0:0,0:0,:,:,4:4] = norm_wind_east[timestep,:,:,:]
+    channels_LSTM_timestep[0:0,0:0,:,:,5:17] = timestep_unchanging_channels
+    
+    channels_LSTM
     
 
 
