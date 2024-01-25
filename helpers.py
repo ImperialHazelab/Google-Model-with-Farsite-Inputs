@@ -182,7 +182,6 @@ class Farsite2Google:
       except Exception as e:
           print(f"Error: An unexpected error occurred - {str(e)}")
       print('Done loading file: ', file_path)
-    
       return np.array(matrix).astype('float64')
     
     def get_moisture_raster(self, fuels, moistureType: Text):

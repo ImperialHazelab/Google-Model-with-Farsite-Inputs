@@ -6,6 +6,7 @@ from helpers import Farsite2Google
 import matplotlib.pyplot as pl
 from shapely.geometry import shape
 import fiona
+import runGoogleModels
 
 rootPath = "D:/OneDrive - Imperial College London/Imperial/ME4/FYP/GeneratorFiles/bananaboat/"
 moistureFiles = "fms"
@@ -160,7 +161,7 @@ for i in range(1,8):
     Run the EPD model 8 times to start the EPD model and 
     prepare inputs for conv_LSTM model
     """
-    front = run_google_EPD_model(channels_EPD)
+    front = runGoogleModels.run_google_EPD_model(channels_EPD)
     
     channels_EPD[0:0,:,:,0:0] = channels_EPD[0:0,:,:,0:0] - front
     channels_EPD[0:0,:,:,1:1] = front
