@@ -153,7 +153,7 @@ print("Initial channels have been set up")
 
 #--------------------------RUN THE MODEL ITSELF------------------------------
 
-fire_evolution_EPD = np.ndarray(1,shape(fuel))
+fire_evolution_EPD = np.ndarray((1,np.shape(fuel)[0],np.shape(fuel)[1]))
 
 for i in range(1,8):
     """
