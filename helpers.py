@@ -103,7 +103,7 @@ class Farsite2Google:
                     # Split the line into elements and convert them to floats
                     row = [float(element) for element in line.split()]
                     if row[0:4]==datetime:
-                        matrix=row[6:8]
+                        matrix=row[7:9]
                         print(matrix)
         except FileNotFoundError:
             print(f"Error: File '{file_path}' not found.")
@@ -122,6 +122,7 @@ class Farsite2Google:
         # Calculate the mean and standard deviation
        mean_value = np.mean(matrix_array)
        std_deviation_value = np.std(matrix_array)
+       print(mean_value, std_deviation_value)
        return [mean_value, std_deviation_value]
     
     
@@ -206,16 +207,15 @@ class Farsite2Google:
         "woody": 5
       }
           
-      moistures = np.ndarray(self.arraySize)
+      moistures = np.zeros(self.arraySize)
       moisturesMatrix=Farsite2Google.get_asc_file(self.rootPath, "moisture.fms",0)
       moisturesArray = moisturesMatrix[:, [0, text_to_integer_mapping.get(moistureType, -1)]]
-    
       # Iterate through the replacement array
-      for element, replacement_value in moisturesArray:
+      for i in range(len(moisturesArray)):
           # Find indices where the element matches in the fuels matrix
-          indices = np.where(fuels == element)
-    
+          moistures[fuels == moisturesArray[i,0]]=moisturesArray[i,1]
+          #indices = np.where(fuels == element)
+          #print(indices)
           # Replace values in the matrix with the corresponding replacement value
-          moistures[indices] = replacement_value
-    
+          #moistures[indices] = replacement_value
       return moistures.astype('float64')

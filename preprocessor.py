@@ -133,10 +133,10 @@ previous_front = front
 scar = scar + front
 
 channels_LSTM[0,0,:,:,0] = vegetation[0,:,:,0]
-channels_LSTM[0,0,:,:,0] = previous_front[0,:,:,0]
-channels_LSTM[0,0,:,:,0] = scar[0,:,:,0]
-channels_LSTM[0,0,:,:,3:3] = norm_wind_east[0,:,:,:]
-channels_LSTM[0,0,:,:,4:4] = norm_wind_east[0,:,:,:]
+channels_LSTM[0,0,:,:,1] = previous_front[0,:,:,0]
+channels_LSTM[0,0,:,:,2] = scar[0,:,:,0]
+channels_LSTM[0,0,:,:,3] = norm_wind_east[0,:,:,0]
+channels_LSTM[0,0,:,:,4] = norm_wind_east[0,:,:,0]
 channels_LSTM[0,0,:,:,5:17] = timestep_unchanging_channels
 
 channels_EPD = channels_LSTM[0,0,:,:,:]
@@ -155,20 +155,19 @@ for i in range(0,8):
     Run the EPD model 8 times to start the EPD model and 
     prepare inputs for conv_LSTM model
     """
-    front = runGoogleModels.run_google_EPD_model(channels_EPD)
+    front_EPD = runGoogleModels.run_google_EPD_model(channels_EPD)
     
-    channels_EPD[0,:,:,0] = channels_EPD[0,:,:,0] - front[0,:,:,0]
-    channels_EPD[0,:,:,1] = front[0,:,:,0]
-    channels_EPD[0,:,:,2] = channels_EPD[0,:,:,2] + front[0,:,:,0]
+    channels_EPD[0,:,:,0] = channels_EPD[0,:,:,0] - front_EPD[0,:,:,0]
+    channels_EPD[0,:,:,1] = front_EPD[0,:,:,0]
+    channels_EPD[0,:,:,2] = channels_EPD[0,:,:,2] + front_EPD[0,:,:,0]
     channels_EPD[0,:,:,3] = norm_wind_east[i,:,:,0]
     channels_EPD[0,:,:,4] = norm_wind_east[i,:,:,0]
-    channels_EPD[0,:,:,5:17] = timestep_unchanging_channels
     
     channels_LSTM[0,i,:,:,0:5] = channels_EPD[0,:,:,0:5]
     
 channels_LSTM_timestep=np.ndarray((1,1,np.shape(fuel)[0],np.shape(fuel)[1],17))
 
-fig, axs = pl.subplots(2)
+pl.subplots(2,3)
     
 for timestep in range(8,(burn_duration*steps_per_hour)):
     
@@ -186,7 +185,12 @@ for timestep in range(8,(burn_duration*steps_per_hour)):
     channels_EPD[0,:,:,3] = norm_wind_east[timestep,:,:,0]
     channels_EPD[0,:,:,4] = norm_wind_east[timestep,:,:,0]
     
-    axs[0].imshow(channels_EPD[0,:,:,0])
+    pl.subplot(2,3,1)
+    pl.imshow(channels_EPD[0,:,:,0])
+    pl.subplot(2,3,2)
+    pl.imshow(channels_EPD[0,:,:,1])
+    pl.subplot(2,3,3)
+    pl.imshow(channels_EPD[0,:,:,2])
     
     """
     conv_LSTM
@@ -203,7 +207,14 @@ for timestep in range(8,(burn_duration*steps_per_hour)):
     channels_LSTM = channels_LSTM[0,1:,:,:,:]
     channels_LSTM = np.concatenate((FarsiteParams.expand_left_index(channels_LSTM),channels_LSTM_timestep),axis=1)
     
-    axs[1].imshow(channels_LSTM[0,7,:,:,0])
+    pl.subplot(2,3,4)
+    pl.imshow(channels_LSTM[0,7,:,:,0])
+    pl.subplot(2,3,5)
+    pl.imshow(channels_LSTM[0,7,:,:,1])
+    pl.subplot(2,3,6)
+    pl.imshow(channels_LSTM[0,7,:,:,2])
+    
+    pl.colorbar()
     
 
 
