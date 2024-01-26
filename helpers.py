@@ -64,6 +64,9 @@ class Farsite2Google:
     def expand_right_index(self, matrix):
         return np.expand_dims(matrix, axis=-1)
     
+    def expand_left_index(self, matrix):
+        return np.expand_dims(matrix, axis=0)
+    
     
     def get_wind_N_S_from_wxs(self, wxs, datetime, duration, steps_per_hour):
         
@@ -146,7 +149,7 @@ class Farsite2Google:
           # Find indices where the element matches in the fuels matrix
           indices = np.where(matrix == element)
           # Replace values in the matrix with the corresponding replacement value
-          output[indices] = i
+          output[indices] = i/40
           i=i+1
        return output.astype('float64')
        
