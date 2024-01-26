@@ -14,5 +14,9 @@ from helpers import Farsite2Google
 
 def run_google_EPD_model(input):
     return tf.data.Dataset.from_tensor_slices(input)
+
+def run_google_LSTM_model(input):
+    return tf.data.Dataset.from_tensor_slices(input)
+    
     
     

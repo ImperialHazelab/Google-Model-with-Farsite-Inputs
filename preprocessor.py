@@ -180,7 +180,7 @@ for timestep in range(9,(burn_duration*steps_per_hour+1)):
     
     EPD First
     """
-    front_EPD = run_google_EPD_model(channels_EPD)
+    front_EPD = runGoogleModels.run_google_EPD_model(channels_EPD)
     
     channels_EPD[0:0,:,:,0:0] = channels_EPD[0:0,:,:,0:0] - front
     channels_EPD[0:0,:,:,1:1] = front
@@ -192,9 +192,7 @@ for timestep in range(9,(burn_duration*steps_per_hour+1)):
     """
     conv_LSTM
     """
-    front_LSTM = run_google_LSTM_model(channels_LSTM)
-    
-    
+    front_LSTM = runGoogleModels.run_google_LSTM_model(channels_LSTM)
     
     channels_LSTM_timestep[0:0,0:0,:,:,0:0] = channels_LSTM[0:0,8,:,:,0:0] - front
     channels_LSTM_timestep[0:0,0:0,:,:,1:1] = front
@@ -204,6 +202,8 @@ for timestep in range(9,(burn_duration*steps_per_hour+1)):
     channels_LSTM_timestep[0:0,0:0,:,:,5:17] = timestep_unchanging_channels
     
     channels_LSTM
+    
+    pl.imshow(front)
     
 
 
