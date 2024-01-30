@@ -8,7 +8,7 @@ from shapely.geometry import shape
 import fiona
 import runGoogleModels
 
-rootPath = "D:\OneDrive - Imperial College London\Documents\Coding Projects\FireScenarioGenerator\FireScenarioGenerator\Output/"
+rootPath = "D:\OneDrive - Imperial College London\Documents\Coding Projects\FireScenarioGenerator\FireScenarioGenerator\Output_windy/"
 moistureFiles = "fms"
 burn_start = [2024,1,1,1300];       "Year, Month, Day, HHMM"
 burn_duration = 10;                  "Hours"
@@ -16,6 +16,8 @@ steps_per_hour = 4;                 "15-min intervals"
 cellSize = 30
 xllcorner = 0
 yllcorner = 0
+
+model = "multiFuel";  #Choose between singleFuel, multiFuel, california, california_wn
 
 #----------Landscape file, surface-------------
 #----------Create Object to save self variables-------------
@@ -29,7 +31,8 @@ FarsiteParams = Farsite2Google(rootPath,
                  np.shape(fuel),
                  cellSize,
                  xllcorner,
-                 yllcorner)
+                 yllcorner,
+                 model)
 cover = Farsite2Google.get_asc_file(rootPath,'canopy.asc')
 slope_north, slope_east = FarsiteParams.get_slope_N_S_from_wxs()
 
@@ -142,7 +145,7 @@ channels_LSTM[0,0,:,:,5:17] = timestep_unchanging_channels
 channels_EPD = channels_LSTM[0,0,:,:,:]
 channels_EPD=FarsiteParams.expand_left_index(channels_EPD)
 
-FarsiteParams.channels2excel(channels_EPD[0,:,:,:],"channels_EPD.xlsx")
+#FarsiteParams.channels2excel(channels_EPD[0,:,:,:],"channels_EPD.xlsx")
 
 print("Initial channels have been set up")
 
@@ -159,7 +162,7 @@ for i in range(0,8):
     Run the EPD model 8 times to start the EPD model and 
     prepare inputs for conv_LSTM model
     """
-    front_EPD = runGoogleModels.run_google_EPD_model(channels_EPD)
+    front_EPD = runGoogleModels.run_google_EPD_model(channels_EPD,model)
     
     channels_EPD[0,:,:,0] = np.clip((channels_EPD[0,:,:,0] - front_EPD[0,:,:,0]),0,1)
     channels_EPD[0,:,:,1] = front_EPD[0,:,:,0]
@@ -188,7 +191,7 @@ for timestep in range(8,(burn_duration*steps_per_hour)):
     
     EPD First
     """
-    front_EPD = runGoogleModels.run_google_EPD_model(channels_EPD)
+    front_EPD = runGoogleModels.run_google_EPD_model(channels_EPD,model)
     
     channels_EPD[0,:,:,0] = np.clip((channels_EPD[0,:,:,0] - front_EPD[0,:,:,0]),0,1)
     channels_EPD[0,:,:,1] = front_EPD[0,:,:,0]
@@ -206,7 +209,7 @@ for timestep in range(8,(burn_duration*steps_per_hour)):
     """
     conv_LSTM
     """
-    front_LSTM = runGoogleModels.run_google_LSTM_model(channels_LSTM)
+    front_LSTM = runGoogleModels.run_google_LSTM_model(channels_LSTM,model)
     
     channels_LSTM_timestep[0,0,:,:,0] = np.clip((channels_LSTM[0,7,:,:,0] - front_LSTM[0,7,:,:,0]),0,1)
     channels_LSTM_timestep[0,0,:,:,1] = front_LSTM[0,7,:,:,0]

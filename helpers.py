@@ -18,7 +18,8 @@ class Farsite2Google:
                  arraySize,
                  cellSize,
                  xllcorner,
-                 yllcorner):
+                 yllcorner,
+                 model):
         self.rootPath = rootPath
         self.moistureFiles = moistureFiles
         self.burn_start = burn_start
@@ -28,6 +29,7 @@ class Farsite2Google:
         self.cellSize = cellSize
         self.xllcorner = xllcorner
         self.yllcorner = yllcorner
+        self.model = model
     
     def burnMap(self, perimeter_poly):
         """Compute the fractional burn map for a given perimeter."""
@@ -76,8 +78,8 @@ class Farsite2Google:
         
         for i in range(duration):
             windMag, windDir = self._get_wind_profile_at_time(wxs, datetime)
-            wind_N=-1*windMag*np.cos(np.radians(windDir))
-            wind_E=-1*windMag*np.sin(np.radians(windDir))
+            wind_N=windMag*np.cos(np.radians(windDir))
+            wind_E=windMag*np.sin(np.radians(windDir))
             if datetime[3]==2300:
                 datetime[3]=0
                 datetime[2]=datetime[2]+1
@@ -141,14 +143,14 @@ class Farsite2Google:
       return result
   
     def norm_data_by_norms(self, data: any, channel) -> any:
-        norms=[[0,0],
+        norms_singleFuel=[[0,0],
                [0,0],
                [0,0],
                [-1.16088,391.4318],
                [-0.16826,373.6882],
                [21.113,115.18],
                [20.665,122.3],
-               [21.008,1210.6939],
+               [21.008,120.6939],
                [64.017,389.6247],
                [64.478,394.6595],
                [48.164,862.465],
@@ -158,6 +160,67 @@ class Farsite2Google:
                [0.00453627,0.11082113],
                [0.00884734285,0.1045156],
                [0,0]]
+        norms_multiFuel=[[0,0],
+               [0,0],
+               [0,0],
+               [0.604685,421.4587],
+               [-0.26755,407.305],
+               [20.439,117.43],
+               [20.17,121.57],
+               [20.372,119.70],
+               [63.21,410.557],
+               [64.9629,403.8],
+               [49.36,833.03],
+               [263.76,18447.3],
+               [114.947,9099.14],
+               [19.521,131.22],
+               [0.01387,0.108777],
+               [0.008559,0.11821],
+               [0,0]]
+        norms_california=[[0,0],
+               [0,0],
+               [0,0],
+               [0.301,417.234],
+               [-0.0647,391.52],
+               [20.669,117.062],
+               [20.532,119.615],
+               [20.568,121.68],
+               [64.72,406.76],
+               [64.033,414.37],
+               [10.39,404.997],
+               [47.31,9343.91],
+               [6.125,335.35],
+               [2.4873,32.097],
+               [0.002422,0.010615],
+               [-0.00044997,0.009587],
+               [0,0]]
+        norms_california_wn=[[0,0],
+               [0,0],
+               [0,0],
+               [-1.11558,379.93],
+               [0.3862,386.96],
+               [20.320,121.64],
+               [20.58,114.11],
+               [20.52,118.33],
+               [64.778,403.4],
+               [64.882,411.64],
+               [11.7,446.87],
+               [53.32,10305.58],
+               [6.7899,367.42],
+               [2.7995,35.1733],
+               [0.001234,0.0105837],
+               [-0.0010052,0.009664],
+               [0,0]]
+        
+        if self.model == "singleFuel":
+            norms=norms_singleFuel
+        elif self.model == "multiFuel":
+            norms = norms_multiFuel
+        elif self.model == "california":
+            norms = norms_california
+        elif self.model == "california_wn":
+            norms = norms_california_wn
+        
         mean = norms[channel-1][0]
         std = np.sqrt(norms[channel-1][1])
         if mean == 0.0 and std == 0.0:

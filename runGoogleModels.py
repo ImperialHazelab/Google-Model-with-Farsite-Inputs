@@ -12,10 +12,11 @@ from helpers import Farsite2Google
 
 
 
-def run_google_EPD_model(input):
+def run_google_EPD_model(input,modelType):
     print('Attempting to load the model: EPD ')
+    pathToModel=('D:\OneDrive - Imperial College London\Imperial\PhD\Google\checkpoints/'+modelType+'/epd.h5')
     model = tf.keras.models.load_model(
-      "D:\GoogleModel\wildfire_conv_ltsm\epd.h5",
+      pathToModel,
       custom_objects={'LastChannelOneHot': LastChannelOneHot,
                       'RemoveLastChannel': RemoveLastChannel,
                       'ReshapeWithBatch': ReshapeWithBatch,
@@ -24,10 +25,11 @@ def run_google_EPD_model(input):
     model_out = tf.cast(model(tf.convert_to_tensor(resized_data)), tf.float64)
     return (tf.image.resize(model_out, (np.shape(input[0,:,:,0])))).numpy()
 
-def run_google_LSTM_model(input):
+def run_google_LSTM_model(input,modelType):
     print('Attempting to load the model: LSTM ')
+    pathToModel=('D:\OneDrive - Imperial College London\Imperial\PhD\Google\checkpoints/'+modelType+'/lstm.h5')
     model = tf.keras.models.load_model(
-      "D:\GoogleModel\wildfire_conv_ltsm\lstm.h5",
+      pathToModel,
       custom_objects={'LastChannelOneHot': LastChannelOneHot,
                       'RemoveLastChannel': RemoveLastChannel,
                       'ReshapeWithBatch': ReshapeWithBatch,
