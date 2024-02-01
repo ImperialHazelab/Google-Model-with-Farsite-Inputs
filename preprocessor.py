@@ -5,7 +5,7 @@ import matplotlib.pyplot as pl
 from ChannelPrep import ChannelPrep
 from ChannelPrep import CallGoogleModel
 
-rootPath = "D:\OneDrive - Imperial College London\Documents\Coding Projects\FireScenarioGenerator\FireScenarioGenerator\Output_quad/"
+rootPath = "D:\OneDrive - Imperial College London\Documents\Coding Projects\FireScenarioGenerator\FireScenarioGenerator\Output_windy/"
 moistureFiles = "fms"
 burn_start = [2024,1,1,1300];       "Year, Month, Day, HHMM"
 burn_duration = 10;                  "Hours"
@@ -67,7 +67,7 @@ for i in range(0,8):
     
 pl.subplots(4,2)
     
-for timestep in range(8,(burn_duration*steps_per_hour)):
+for timestep in range(8,(burn_duration*steps_per_hour)-1):
     
     print("------ITERATION STEP ",timestep+1,"of ",burn_duration*steps_per_hour, " -----------")
     """
@@ -85,28 +85,28 @@ for timestep in range(8,(burn_duration*steps_per_hour)):
     california_wn.iterate_LSTM("california_wn",timestep)
     
     pl.subplot(2,4,1)
-    pl.imshow(simpleFuel.channels_EPD[0,:,:,0])
+    pl.imshow(simpleFuel.channels_EPD[timestep,:,:,0])
     pl.title("Single, EPD")
     pl.subplot(2,4,5)
-    pl.imshow(simpleFuel.channels_LSTM[0,7,:,:,0])
+    pl.imshow(simpleFuel.channels_LSTM[0,timestep,:,:,0])
     pl.title("Single, LSTM")
     pl.subplot(2,4,2)
-    pl.imshow(multiFuel.channels_EPD[0,:,:,0])
+    pl.imshow(multiFuel.channels_EPD[timestep,:,:,0])
     pl.title("Multi, EPD")
     pl.subplot(2,4,6)
-    pl.imshow(multiFuel.channels_LSTM[0,7,:,:,0])
+    pl.imshow(multiFuel.channels_LSTM[0,timestep,:,:,0])
     pl.title("Multi, LSTM")
     pl.subplot(2,4,3)
-    pl.imshow(california.channels_EPD[0,:,:,0])
+    pl.imshow(california.channels_EPD[timestep,:,:,0])
     pl.title("California, EPD")
     pl.subplot(2,4,7)
-    pl.imshow(california.channels_LSTM[0,7,:,:,0])
+    pl.imshow(california.channels_LSTM[0,timestep,:,:,0])
     pl.title("California, LSTM")
     pl.subplot(2,4,4)
-    pl.imshow(california_wn.channels_EPD[0,:,:,0])
+    pl.imshow(california_wn.channels_EPD[timestep,:,:,0])
     pl.title("California WN, EPD")
     pl.subplot(2,4,8)
-    pl.imshow(california_wn.channels_LSTM[0,7,:,:,0])    
+    pl.imshow(california_wn.channels_LSTM[0,timestep,:,:,0])    
     pl.title("California WN, LSTM")
     
 print("=========Simulations Done===========")
