@@ -13,7 +13,7 @@ from helpers import Farsite2Google
 
 
 def run_google_EPD_model(input,modelType):
-    print('Attempting to load the model: EPD ')
+    print('Attempting to load the model: EPD ', modelType)
     pathToModel=('D:\OneDrive - Imperial College London\Imperial\PhD\Google\checkpoints/'+modelType+'/epd.h5')
     model = tf.keras.models.load_model(
       pathToModel,
@@ -26,7 +26,7 @@ def run_google_EPD_model(input,modelType):
     return (tf.image.resize(model_out, (np.shape(input[0,:,:,0])))).numpy()
 
 def run_google_LSTM_model(input,modelType):
-    print('Attempting to load the model: LSTM ')
+    print('Attempting to load the model: LSTM ', modelType)
     pathToModel=('D:\OneDrive - Imperial College London\Imperial\PhD\Google\checkpoints/'+modelType+'/lstm.h5')
     model = tf.keras.models.load_model(
       pathToModel,

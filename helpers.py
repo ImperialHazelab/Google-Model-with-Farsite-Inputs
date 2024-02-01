@@ -12,24 +12,20 @@ class Farsite2Google:
     
     def __init__(self, rootPath, 
                  moistureFiles, 
-                 burn_start, 
                  burn_duration, 
                  steps_per_hour, 
                  arraySize,
                  cellSize,
                  xllcorner,
-                 yllcorner,
-                 model):
+                 yllcorner):
         self.rootPath = rootPath
         self.moistureFiles = moistureFiles
-        self.burn_start = burn_start
-        self.burn_duration = burn_duration
+        self.duration = burn_duration
         self.steps_per_hour = steps_per_hour
         self.arraySize = arraySize
         self.cellSize = cellSize
         self.xllcorner = xllcorner
         self.yllcorner = yllcorner
-        self.model = model
     
     def burnMap(self, perimeter_poly):
         """Compute the fractional burn map for a given perimeter."""
@@ -61,25 +57,26 @@ class Farsite2Google:
                 
         return slope_North, slope_East
     
-    def expand_left_and_right_indeces(self, matrix):
+    def expand_left_and_right_indeces(matrix):
         return np.expand_dims(np.expand_dims(matrix, axis=0), axis=-1)
     
-    def expand_right_index(self, matrix):
+    def expand_right_index(matrix):
         return np.expand_dims(matrix, axis=-1)
     
-    def expand_left_index(self, matrix):
+    def expand_left_index(matrix):
         return np.expand_dims(matrix, axis=0)
     
     
-    def get_wind_N_S_from_wxs(self, wxs, datetime, duration, steps_per_hour):
-        
-        wind_North_full=np.ndarray(np.append(duration*steps_per_hour, self.arraySize));
-        wind_East_full=np.ndarray(np.append(duration*steps_per_hour, self.arraySize));
-        
-        for i in range(duration):
-            windMag, windDir = self._get_wind_profile_at_time(wxs, datetime)
-            wind_N=windMag*np.cos(np.radians(windDir))
-            wind_E=windMag*np.sin(np.radians(windDir))
+    def get_wind_N_S_from_wxs(self, datetime, wxs):
+                
+        wind_North_full=np.ndarray(np.append(self.duration*self.steps_per_hour, self.arraySize));
+        wind_East_full=np.ndarray(np.append(self.duration*self.steps_per_hour, self.arraySize));
+                
+        for i in range(self.duration):
+            
+            windMag, windDir = self._get_wind_profile_at_time(datetime, wxs)
+            wind_N=windMag*np.cos(np.radians(windDir+180))
+            wind_E=windMag*np.sin(np.radians(windDir+180))
             if datetime[3]==2300:
                 datetime[3]=0
                 datetime[2]=datetime[2]+1
@@ -87,22 +84,21 @@ class Farsite2Google:
                 datetime[3]=datetime[3] + 100;                                   "Prep for next step"
             wind_North=np.full(self.arraySize,wind_N)
             wind_East=np.full(self.arraySize,wind_E)
-            for j in range(steps_per_hour):
-                wind_North_full[steps_per_hour*i+j,:,:] = wind_North
-                wind_East_full[steps_per_hour*i+j,:,:] = wind_East
+            for j in range(self.steps_per_hour):
+                wind_North_full[self.steps_per_hour*i+j,:,:] = wind_North
+                wind_East_full[self.steps_per_hour*i+j,:,:] = wind_East
                 
         return wind_North_full, wind_East_full
         
-    def _get_wind_profile_at_time(self, wxs, datetime, skip_lines=4):
+    def _get_wind_profile_at_time(self,datetime, wxs, skip_lines=4):
         file_path = os.path.join(self.rootPath, wxs)
-        
+                
         if not os.path.exists(file_path):
           raise FileNotFoundError(f'The file {file_path} does not exist.')
           return -1
-    
         matrix = []
         try:
-            print('Trying to load file: ', file_path)
+            print('Trying to load file: ', wxs)
             with open(file_path, 'r') as file:
                 for _ in range(skip_lines): # Ignore headers
                     next(file)
@@ -111,11 +107,12 @@ class Farsite2Google:
                     row = [float(element) for element in line.split()]
                     if row[0:4]==datetime:
                         matrix=row[7:9]
+                        break
         except FileNotFoundError:
             print(f"Error: File '{file_path}' not found.")
         except Exception as e:
             print(f"Error: An unexpected error occurred - {str(e)}")
-        print('Done loading file: ', file_path)
+        print('Done loading file: ', wxs)
         return matrix
     
     def _get_mean_std_from_matrix(matrix):
@@ -128,7 +125,6 @@ class Farsite2Google:
         # Calculate the mean and standard deviation
        mean_value = np.mean(matrix_array)
        std_deviation_value = np.std(matrix_array)
-       print(mean_value, std_deviation_value)
        return [mean_value, std_deviation_value]
     
     
@@ -142,7 +138,7 @@ class Farsite2Google:
       result = (data - mean) / std
       return result
   
-    def norm_data_by_norms(self, data: any, channel) -> any:
+    def norm_data_by_norms(self, data: any, model, channel) -> any:
         norms_singleFuel=[[0,0],
                [0,0],
                [0,0],
@@ -212,13 +208,13 @@ class Farsite2Google:
                [-0.0010052,0.009664],
                [0,0]]
         
-        if self.model == "singleFuel":
+        if model == "singleFuel":
             norms=norms_singleFuel
-        elif self.model == "multiFuel":
+        elif model == "multiFuel":
             norms = norms_multiFuel
-        elif self.model == "california":
+        elif model == "california":
             norms = norms_california
-        elif self.model == "california_wn":
+        elif model == "california_wn":
             norms = norms_california_wn
         
         mean = norms[channel-1][0]
@@ -268,7 +264,7 @@ class Farsite2Google:
     
       matrix = []
       try:
-          print('Trying to load file: ', file_path)
+          print('Trying to load file: ', which_file)
           with open(file_path, 'r') as file:
               for _ in range(skip_lines): # Ignore headers
                   next(file)
@@ -280,7 +276,7 @@ class Farsite2Google:
           print(f"Error: File '{file_path}' not found.")
       except Exception as e:
           print(f"Error: An unexpected error occurred - {str(e)}")
-      print('Done loading file: ', file_path)
+      print('Done loading file: ', which_file)
       return np.array(matrix).astype('float64')
     
     def get_moisture_raster(self, fuels, moistureType: Text):
