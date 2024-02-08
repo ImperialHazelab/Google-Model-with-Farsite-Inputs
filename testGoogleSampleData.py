@@ -1,4 +1,3 @@
-#import os
 from typing import Dict, Iterable, Tuple
 from ml_collections import config_dict
 import numpy as np
@@ -92,7 +91,6 @@ yllcorner = 0
 fuel = Farsite2Google.get_asc_file(rootPath,'fuel.asc')
 FarsiteParams = Farsite2Google(rootPath, 
                  moistureFiles, 
-                 burn_start, 
                  burn_duration, 
                  steps_per_hour, 
                  np.shape(fuel),

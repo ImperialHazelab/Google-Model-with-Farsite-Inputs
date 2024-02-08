@@ -17,6 +17,7 @@ def run_google_EPD_model(input,modelType):
     pathToModel=('D:\OneDrive - Imperial College London\Imperial\PhD\Google\checkpoints/'+modelType+'/epd.h5')
     model = tf.keras.models.load_model(
       pathToModel,
+      compile=False,
       custom_objects={'LastChannelOneHot': LastChannelOneHot,
                       'RemoveLastChannel': RemoveLastChannel,
                       'ReshapeWithBatch': ReshapeWithBatch,
@@ -30,6 +31,7 @@ def run_google_LSTM_model(input,modelType):
     pathToModel=('D:\OneDrive - Imperial College London\Imperial\PhD\Google\checkpoints/'+modelType+'/lstm.h5')
     model = tf.keras.models.load_model(
       pathToModel,
+      compile=False,
       custom_objects={'LastChannelOneHot': LastChannelOneHot,
                       'RemoveLastChannel': RemoveLastChannel,
                       'ReshapeWithBatch': ReshapeWithBatch,

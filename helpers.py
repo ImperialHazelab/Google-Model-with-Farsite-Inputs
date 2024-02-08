@@ -52,8 +52,8 @@ class Farsite2Google:
         slope=Farsite2Google.get_asc_file(self.rootPath, "slope.asc")
         aspect=Farsite2Google.get_asc_file(self.rootPath, "aspect.asc")
         
-        slope_North=slope*np.sin(np.radians(aspect))
-        slope_East=slope*np.cos(np.radians(aspect))
+        slope_North=slope*np.sin(np.radians(aspect+180))/100
+        slope_East=slope*np.cos(np.radians(aspect+180))/100
                 
         return slope_North, slope_East
     

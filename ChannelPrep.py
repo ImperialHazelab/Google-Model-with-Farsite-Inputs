@@ -11,6 +11,7 @@ from shapely.geometry import shape
 import fiona
 import runGoogleModels
 import numpy as np
+import matplotlib.pyplot as pl
 
 class CallGoogleModel:
     
@@ -18,15 +19,17 @@ class CallGoogleModel:
         
         self.channels_EPD = channels_EPD
         self.channels_LSTM = channels_LSTM
-    
+        self.arrivalTime_EPD = np.zeros(np.shape(channels_EPD[0,:,:,0]))
+        self.arrivalTime_LSTM = self.arrivalTime_EPD
+        
     def iterate_EPD(self, dataset, timestep):
         front_EPD = runGoogleModels.run_google_EPD_model(Farsite2Google.expand_left_index(self.channels_EPD[timestep,:,:,:]), dataset)
         
         self.channels_EPD[timestep+1,:,:,0] = np.clip((self.channels_EPD[timestep,:,:,0] - front_EPD[0,:,:,0]),0,1)
         self.channels_EPD[timestep+1,:,:,1] = front_EPD[0,:,:,0]
         self.channels_EPD[timestep+1,:,:,2] = np.clip((self.channels_EPD[timestep,:,:,2] + front_EPD[0,:,:,0]),0,1)
-                    
         
+        self.arrivalTime_EPD[np.logical_and(front_EPD[0,:,:,0] > 0.2, self.arrivalTime_EPD == 0)] = 15 * timestep
     def iterate_LSTM(self,dataset, timestep):
         
         front_LSTM = runGoogleModels.run_google_LSTM_model(Farsite2Google.expand_left_index(self.channels_LSTM[0,timestep-8:timestep,:,:,:]),dataset)
@@ -34,8 +37,50 @@ class CallGoogleModel:
         self.channels_LSTM[0,timestep+1,:,:,0] = np.clip((self.channels_LSTM[0,timestep,:,:,0] - front_LSTM[0,7,:,:,0]),0,1)
         self.channels_LSTM[0,timestep+1,:,:,1] = front_LSTM[0,7,:,:,0]
         self.channels_LSTM[0,timestep+1,:,:,2] = np.clip((self.channels_LSTM[0,timestep,:,:,2] + front_LSTM[0,7,:,:,0]),0,1)
-            
-
+        
+        self.arrivalTime_LSTM[np.logical_and(front_LSTM[0,7,:,:,0] > 0.2, self.arrivalTime_LSTM == 0)] = 15 * timestep
+             
+    def plotResults(self, timestep, label, name, path):
+        
+        fig, axs = pl.subplots(nrows=3, ncols=2, figsize=(8, 8), tight_layout=True)
+        
+        plot = axs[0, 0].imshow(self.channels_EPD[timestep,:,:,0],cmap="plasma")
+        axs[0, 0].set_title(("EPD model"))
+        pl.colorbar(plot)
+        axs[0, 0].axis("off")
+        
+        plot = axs[0, 1].imshow(self.channels_LSTM[0,timestep,:,:,0],cmap="plasma")
+        axs[0, 1].set_title("LSTM model")
+        pl.colorbar(plot)
+        axs[0, 1].axis("off")
+        
+        plot = axs[1, 0].imshow(self.channels_EPD[timestep,:,:,0]-label,cmap="coolwarm")
+        axs[1, 0].set_title("EPD error")
+        pl.colorbar(plot)
+        axs[1, 0].axis("off")
+        
+        plot = axs[1, 1].imshow(self.channels_LSTM[0,timestep,:,:,0]-label,cmap="coolwarm")
+        axs[1, 1].set_title("LSTM error")
+        pl.colorbar(plot)
+        axs[1, 1].axis("off")
+        
+        plot = axs[2, 0].imshow(self.arrivalTime_EPD, cmap = "Greens")
+        axs[2, 0].set_title("EPD Arrival Time")
+        pl.colorbar(plot)
+        axs[2, 0].axis("off")
+        
+        plot = axs[2, 1].imshow(self.arrivalTime_EPD, cmap = "Greens")
+        axs[2, 1].set_title("LSTM Arrival Time")
+        pl.colorbar(plot)
+        axs[2, 1].axis("off")
+        
+        pl.suptitle(name)
+        pl.subplots_adjust(bottom=0.1, right=0.8, top=0.9)
+        
+        pl.savefig(path + name + ".png")
+        
+        pl.show()
+                
 class ChannelPrep:
     def __init__(self, config):
         
@@ -63,9 +108,9 @@ class ChannelPrep:
         self.slope_north, self.slope_east = self.FarsiteParams.get_slope_N_S_from_wxs()
         
         #----------Landscape file, canopy-------------
-        self.height = Farsite2Google.get_asc_file(self.rootPath,'height.asc')
-        self.base = Farsite2Google.get_asc_file(self.rootPath,'standheight.asc')
-        self.density = Farsite2Google.get_asc_file(self.rootPath,'crownbulkdensity.asc')
+        self.height = Farsite2Google.get_asc_file(self.rootPath,'height.asc')*10
+        self.base = Farsite2Google.get_asc_file(self.rootPath,'standheight.asc')*100
+        self.density = Farsite2Google.get_asc_file(self.rootPath,'crownbulkdensity.asc')*100
         
         #---------Wind magnitude and direction----------
         
@@ -107,7 +152,7 @@ class ChannelPrep:
   
         #--------------Normalize Data and resize indices-----------------
 
-        print("=================Normalizing Data=================")
+        print("====================== Normalizing Data ========================")
         
         #norm_fuel does not need normalising, it does need recategorisation
         norm_wind_east = Farsite2Google.expand_right_index(self.FarsiteParams.norm_data_by_norms(self.wind_east, model, 4))
@@ -128,16 +173,16 @@ class ChannelPrep:
         previous_front = Farsite2Google.expand_left_and_right_indeces(self.previous_front)
         scar = Farsite2Google.expand_left_and_right_indeces(self.scar)
         
-        print("====================Rasters Normalized======================")
-        print("======================Reclassifying fuel map======================")
+        print("====================== Rasters Normalized ======================")
+        print("====================== Reclassifying fuel map ==================")
         
         continuous_fuel_class = Farsite2Google.expand_left_and_right_indeces(self.FarsiteParams.reclassify_fuels_to_continuous(self.fuel))
         
-        print("======================Fuel map reclassification done======================")
+        print("====================== Fuel map reclassification done ==========")
 
 #-----------------Prepare all channels----------------------
         
-        print("======================Preparing all channels======================")
+        print("====================== Preparing all channels ==================")
         
         timestep_unchanging_channels = np.concatenate((             
                                             norm_moisture_1,
@@ -174,7 +219,7 @@ class ChannelPrep:
         if exportToExcel:
             self.FarsiteParams.channels2excel(channels_EPD[0,:,:,:],"channels_EPD.xlsx")
 
-        print("Initial channels have been set up")
+        print("====================== Initial Channel Setup Complete ==========")
         
         return channels_EPD, channels_LSTM
 

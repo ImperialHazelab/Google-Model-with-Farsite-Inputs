@@ -1,14 +1,13 @@
 """Code to preprocess a single FARSITE case"""
-
 import numpy as np
-import matplotlib.pyplot as pl
 from ChannelPrep import ChannelPrep
 from ChannelPrep import CallGoogleModel
+from helpers import Farsite2Google
 
-rootPath = "D:\OneDrive - Imperial College London\Documents\Coding Projects\FireScenarioGenerator\FireScenarioGenerator\Output_windy/"
+rootPath = "D:\OneDrive - Imperial College London\Documents\Coding Projects\FireScenarioGenerator\FireScenarioGenerator\Output_complex2/"
 moistureFiles = "fms"
 burn_start = [2024,1,1,1300];       "Year, Month, Day, HHMM"
-burn_duration = 10;                  "Hours"
+burn_duration = 24;                  "Hours"
 steps_per_hour = 4;                 "15-min intervals"
 cellSize = 30
 xllcorner = 0
@@ -26,11 +25,16 @@ config=[["rootpath",rootPath],
         ["Y Lower Left Corner Coords", yllcorner]]
 
 prep = ChannelPrep(config)
+
+label = Farsite2Google.get_asc_file(rootPath, "arrivaltime.asc")
+label[label > 0] = 0
+label[label < 0] = 1
+
 prep.importFiles()
 
 rasterSize=np.shape(prep.fuel)
 
-EPD, LSTM = prep.normaliseAndStitchChannels("singleFuel", False)
+EPD, LSTM = prep.normaliseAndStitchChannels("singleFuel", True)
 simpleFuel = CallGoogleModel(EPD, LSTM)
 
 EPD, LSTM = prep.normaliseAndStitchChannels("multiFuel", False)
@@ -64,8 +68,7 @@ for i in range(0,8):
     
     california_wn.iterate_EPD("california_wn",i)
     california_wn.channels_LSTM[0,i,:,:,0:5] = california_wn.channels_EPD[0,:,:,0:5]
-    
-pl.subplots(4,2)
+
     
 for timestep in range(8,(burn_duration*steps_per_hour)-1):
     
@@ -83,72 +86,12 @@ for timestep in range(8,(burn_duration*steps_per_hour)-1):
     multiFuel.iterate_LSTM("multiFuel",timestep)
     california.iterate_LSTM("california",timestep)
     california_wn.iterate_LSTM("california_wn",timestep)
-    
-    pl.subplot(2,4,1)
-    pl.imshow(simpleFuel.channels_EPD[timestep,:,:,0])
-    pl.title("Single, EPD")
-    pl.subplot(2,4,5)
-    pl.imshow(simpleFuel.channels_LSTM[0,timestep,:,:,0])
-    pl.title("Single, LSTM")
-    pl.subplot(2,4,2)
-    pl.imshow(multiFuel.channels_EPD[timestep,:,:,0])
-    pl.title("Multi, EPD")
-    pl.subplot(2,4,6)
-    pl.imshow(multiFuel.channels_LSTM[0,timestep,:,:,0])
-    pl.title("Multi, LSTM")
-    pl.subplot(2,4,3)
-    pl.imshow(california.channels_EPD[timestep,:,:,0])
-    pl.title("California, EPD")
-    pl.subplot(2,4,7)
-    pl.imshow(california.channels_LSTM[0,timestep,:,:,0])
-    pl.title("California, LSTM")
-    pl.subplot(2,4,4)
-    pl.imshow(california_wn.channels_EPD[timestep,:,:,0])
-    pl.title("California WN, EPD")
-    pl.subplot(2,4,8)
-    pl.imshow(california_wn.channels_LSTM[0,timestep,:,:,0])    
-    pl.title("California WN, LSTM")
+  
+
+simpleFuel.plotResults(timestep, label, "Single Fuel", rootPath)
+multiFuel.plotResults(timestep, label, "Multiple Fuel", rootPath)
+california.plotResults(timestep, label, "California", rootPath)
+california_wn.plotResults(timestep, label, "California WN", rootPath)
+
     
 print("=========Simulations Done===========")
-    
-
-
-#tensor=tf.convert_to_tensor(np.array(channels_EPD),dtype=tf.float32)
-#tf.saved_model.save(tensor, os.path.join(rootPath, "inputTensor.tsr"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    
