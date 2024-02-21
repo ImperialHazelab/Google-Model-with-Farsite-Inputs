@@ -12,33 +12,36 @@ import fiona
 import runGoogleModels
 import numpy as np
 import matplotlib.pyplot as pl
+from matplotlib.animation import FuncAnimation
+import tensorflow as tf
 
 class CallGoogleModel:
     
     def __init__(self, channels_EPD, channels_LSTM):
         
-        self.channels_EPD = channels_EPD
-        self.channels_LSTM = channels_LSTM
+        self.channels_EPD = np.copy(channels_EPD)
+        self.channels_LSTM = np.copy(channels_LSTM)
         self.arrivalTime_EPD = np.zeros(np.shape(channels_EPD[0,:,:,0]))
-        self.arrivalTime_LSTM = self.arrivalTime_EPD
+        self.arrivalTime_LSTM = np.copy(self.arrivalTime_EPD)
         
     def iterate_EPD(self, dataset, timestep):
         front_EPD = runGoogleModels.run_google_EPD_model(Farsite2Google.expand_left_index(self.channels_EPD[timestep,:,:,:]), dataset)
-        
+        front_EPD = np.clip(front_EPD,0,1)
         self.channels_EPD[timestep+1,:,:,0] = np.clip((self.channels_EPD[timestep,:,:,0] - front_EPD[0,:,:,0]),0,1)
         self.channels_EPD[timestep+1,:,:,1] = front_EPD[0,:,:,0]
         self.channels_EPD[timestep+1,:,:,2] = np.clip((self.channels_EPD[timestep,:,:,2] + front_EPD[0,:,:,0]),0,1)
         
-        self.arrivalTime_EPD[np.logical_and(front_EPD[0,:,:,0] > 0.2, self.arrivalTime_EPD == 0)] = 15 * timestep
-    def iterate_LSTM(self,dataset, timestep):
+        self.arrivalTime_EPD[np.logical_and(front_EPD[0,:,:,0] > 0.1, self.arrivalTime_EPD == 0)] = 15 * timestep
         
-        front_LSTM = runGoogleModels.run_google_LSTM_model(Farsite2Google.expand_left_index(self.channels_LSTM[0,timestep-8:timestep,:,:,:]),dataset)
+    def iterate_LSTM(self, dataset, timestep):
         
+        front_LSTM = runGoogleModels.run_google_LSTM_model(Farsite2Google.expand_left_index(self.channels_LSTM[0,timestep-7:timestep+1,:,:,:]),dataset)
+        front_LSTM = np.clip(front_LSTM,0,1)
         self.channels_LSTM[0,timestep+1,:,:,0] = np.clip((self.channels_LSTM[0,timestep,:,:,0] - front_LSTM[0,7,:,:,0]),0,1)
         self.channels_LSTM[0,timestep+1,:,:,1] = front_LSTM[0,7,:,:,0]
         self.channels_LSTM[0,timestep+1,:,:,2] = np.clip((self.channels_LSTM[0,timestep,:,:,2] + front_LSTM[0,7,:,:,0]),0,1)
         
-        self.arrivalTime_LSTM[np.logical_and(front_LSTM[0,7,:,:,0] > 0.2, self.arrivalTime_LSTM == 0)] = 15 * timestep
+        self.arrivalTime_LSTM[np.logical_and(front_LSTM[0,7,:,:,0] > 0.1, self.arrivalTime_LSTM == 0)] = 15 * timestep
              
     def plotResults(self, timestep, label, name, path):
         
@@ -47,12 +50,12 @@ class CallGoogleModel:
         plot = axs[0, 0].imshow(self.channels_EPD[timestep,:,:,0],cmap="plasma")
         axs[0, 0].set_title(("EPD model"))
         pl.colorbar(plot)
-        axs[0, 0].axis("off")
+        axs[0, 0].axis("on")
         
         plot = axs[0, 1].imshow(self.channels_LSTM[0,timestep,:,:,0],cmap="plasma")
         axs[0, 1].set_title("LSTM model")
         pl.colorbar(plot)
-        axs[0, 1].axis("off")
+        axs[0, 1].axis("on")
         
         plot = axs[1, 0].imshow(self.channels_EPD[timestep,:,:,0]-label,cmap="coolwarm")
         axs[1, 0].set_title("EPD error")
@@ -69,7 +72,7 @@ class CallGoogleModel:
         pl.colorbar(plot)
         axs[2, 0].axis("off")
         
-        plot = axs[2, 1].imshow(self.arrivalTime_EPD, cmap = "Greens")
+        plot = axs[2, 1].imshow(self.arrivalTime_LSTM, cmap = "Greens")
         axs[2, 1].set_title("LSTM Arrival Time")
         pl.colorbar(plot)
         axs[2, 1].axis("off")
@@ -80,6 +83,38 @@ class CallGoogleModel:
         pl.savefig(path + name + ".png")
         
         pl.show()
+        
+    def animateResults(self, channel, quantity, cmap='viridis', interval=200):
+        fig, ax = pl.subplots()
+        
+        if (channel == "EPD"):
+            matrix_data = self.channels_EPD
+        elif (channel == "LSTM"):
+            matrix_data = self.channels_LSTM[0,:,:,:,:]
+        else:
+            print("Model specified not in the list")
+            return 0;
+        
+        if (quantity == "vegetation"):
+            quantity = 0
+        elif (quantity == "front"):
+            quantity = 1
+        elif (quantity == "scar"):
+            quantity = 2
+        
+        img = ax.imshow(matrix_data[0, :, : , quantity], cmap=cmap)
+        
+        def update(i):
+            img.set_array(matrix_data[i, :, : , quantity])
+            ax.set_title("Model: " + channel + ', Time Step: ' + str(i))
+            return img,
+        
+        num_frames = matrix_data.shape[1]
+        animation = FuncAnimation(fig, update, frames=num_frames, interval=interval, blit=True)
+        
+        pl.show()
+        
+        return animation
                 
 class ChannelPrep:
     def __init__(self, config):
@@ -92,6 +127,7 @@ class ChannelPrep:
         self.moistureFiles = config[5][1]
         self.xllcorner = config[6][1]
         self.yllcorner = config[7][1]
+        self.simSteps = self.burn_duration * self.steps_per_hour ;
         
     def importFiles(self):
 
@@ -103,19 +139,21 @@ class ChannelPrep:
                          np.shape(self.fuel),
                          self.cellSize,
                          self.xllcorner,
-                         self.yllcorner)
+                         self.yllcorner,
+                         self.simSteps)
         self.cover = Farsite2Google.get_asc_file(self.rootPath,'canopy.asc')
         self.slope_north, self.slope_east = self.FarsiteParams.get_slope_N_S_from_wxs()
+        self.slope_north=-1*self.slope_north
         
         #----------Landscape file, canopy-------------
-        self.height = Farsite2Google.get_asc_file(self.rootPath,'height.asc')*10
-        self.base = Farsite2Google.get_asc_file(self.rootPath,'standheight.asc')*100
+        self.height = Farsite2Google.get_asc_file(self.rootPath,'standheight.asc')*100
+        self.base = Farsite2Google.get_asc_file(self.rootPath,'height.asc')*100
         self.density = Farsite2Google.get_asc_file(self.rootPath,'crownbulkdensity.asc')*100
         
         #---------Wind magnitude and direction----------
         
         self.wind_north, self.wind_east = self.FarsiteParams.get_wind_N_S_from_wxs(self.burn_start, "weather.wxs")
-        
+        self.wind_north=-1*self.wind_north
         #---------------Moistures-----------------
         if self.moistureFiles == "fms":
         
@@ -147,6 +185,29 @@ class ChannelPrep:
         self.burnMap = self.FarsiteParams.burnMap(shp_geom)
   
         print("Loaded all matrices. Shape: ", np.shape(self.fuel))
+        
+    def exportRawValues(self):
+        outputRaw = np.stack((self.vegetation,
+                                self.previous_front,
+                                self.scar,
+                                self.wind_east[0,:,:],
+                                self.wind_north[0,:,:],
+                                self.moisture_1,
+                                self.moisture_10,
+                                self.moisture_100,
+                                self.moisture_her,
+                                self.moisture_woo,
+                                self.cover,
+                                self.height,
+                                self.base,
+                                self.density,
+                                self.slope_east,
+                                self.slope_north,
+                                self.FarsiteParams.reclassify_fuels_to_continuous(self.fuel)),
+                                axis = -1);                     "All the channels that never change"
+        
+        
+        self.FarsiteParams.channels2excel(outputRaw[:,:,:],"channels_raw.xlsx")
           
     def normaliseAndStitchChannels(self, model, exportToExcel):
   
@@ -199,29 +260,36 @@ class ChannelPrep:
                                             continuous_fuel_class),
                                             axis = -1);                     "All the channels that never change"
         
-        channels_LSTM=np.ndarray((1,self.steps_per_hour*self.burn_duration,np.shape(self.fuel)[0],np.shape(self.fuel)[1],17));     "Prepare the 1 x T x H x W x 17 tensor"
-        channels_EPD=np.ndarray((self.steps_per_hour*self.burn_duration,np.shape(self.fuel)[0],np.shape(self.fuel)[1],17));                            "Prepare the 1 x H x W x 17 tensor"
+        channels_LSTM = np.ndarray((1,self.simSteps,np.shape(self.fuel)[0],np.shape(self.fuel)[1],17));     "Prepare the 1 x T x H x W x 17 tensor"
+        channels_EPD = np.ndarray((self.simSteps,np.shape(self.fuel)[0],np.shape(self.fuel)[1],17));                            "Prepare the 1 x H x W x 17 tensor"
         
         front = Farsite2Google.expand_left_and_right_indeces(self.burnMap)
         vegetation=vegetation - front
         previous_front = front
         scar = scar + front
         
-        channels_LSTM[0,:,:,:,0] = vegetation[0,:,:,0]
-        channels_LSTM[0,:,:,:,1] = previous_front[0,:,:,0]
-        channels_LSTM[0,:,:,:,2] = scar[0,:,:,0]
-        channels_LSTM[0,:,:,:,3] = norm_wind_east[0,:,:,0]
-        channels_LSTM[0,:,:,:,4] = norm_wind_north[0,:,:,0]
+        channels_LSTM[0,0,:,:,0] = vegetation[0,:,:,0]
+        channels_LSTM[0,0,:,:,1] = previous_front[0,:,:,0]
+        channels_LSTM[0,0,:,:,2] = scar[0,:,:,0]
+        channels_LSTM[0,:,:,:,3] = norm_wind_east[:,:,:,0]
+        channels_LSTM[0,:,:,:,4] = norm_wind_north[:,:,:,0]
         channels_LSTM[0,:,:,:,5:17] = timestep_unchanging_channels
         
-        channels_EPD = channels_LSTM[0,:,:,:,:]
+        channels_EPD = np.copy(channels_LSTM[0,:,:,:,:])
+        
+        channels_EPD_resized = np.ndarray((self.simSteps,126,126,17));
+        channels_LSTM_resized = np.ndarray((1,self.simSteps,126,126,17));
+        
+        for i in range(0,self.simSteps):
+            channels_EPD_resized[i,:,:,:] = tf.image.resize(channels_EPD[i,:,:,:], (126, 126),"nearest")
+            channels_LSTM_resized[0,i,:,:,:] = tf.image.resize(channels_LSTM[0,i,:,:,:], (126, 126),"nearest")
         
         if exportToExcel:
             self.FarsiteParams.channels2excel(channels_EPD[0,:,:,:],"channels_EPD.xlsx")
 
         print("====================== Initial Channel Setup Complete ==========")
         
-        return channels_EPD, channels_LSTM
+        return channels_EPD_resized, channels_LSTM_resized
 
 
         

@@ -7,10 +7,6 @@ Created on Thu Jan 25 10:24:24 2024
 import tensorflow as tf
 from typing import Dict, Tuple, List, Text, Iterable
 import numpy as np
-import helpers 
-from helpers import Farsite2Google
-
-
 
 def run_google_EPD_model(input,modelType):
     print('Attempting to load the model: EPD ', modelType)
@@ -22,9 +18,9 @@ def run_google_EPD_model(input,modelType):
                       'RemoveLastChannel': RemoveLastChannel,
                       'ReshapeWithBatch': ReshapeWithBatch,
                       '_identity_activation': _identity_activation})
-    resized_data = tf.image.resize(input, (126, 126))
-    model_out = tf.cast(model(tf.convert_to_tensor(resized_data)), tf.float64)
-    return (tf.image.resize(model_out, (np.shape(input[0,:,:,0])))).numpy()
+    # resized_data = tf.image.resize(input, (126, 126),"nearest")
+    model_out = tf.cast(model(tf.convert_to_tensor(input)), tf.float64)
+    return model_out.numpy()
 
 def run_google_LSTM_model(input,modelType):
     print('Attempting to load the model: LSTM ', modelType)
@@ -36,13 +32,11 @@ def run_google_LSTM_model(input,modelType):
                       'RemoveLastChannel': RemoveLastChannel,
                       'ReshapeWithBatch': ReshapeWithBatch,
                       '_identity_activation': _identity_activation})
-    resized_data = tf.image.resize(input[0,:,:,:,:], (126, 126))
+    resized_data = tf.image.resize(input[0,:,:,:,:], (126, 126), "nearest")
     resized_data = np.expand_dims(resized_data.numpy(), axis=0)
     model_out = tf.cast(model(tf.convert_to_tensor(resized_data)), tf.float64)
     model_out_resized = tf.image.resize(model_out[0,:,:,:,:], (np.shape(input[0,0,:,:,0])))
     return np.expand_dims(model_out_resized.numpy(), axis=0)
-
-    
 
 def _identity_activation(data: tf.Tensor) -> tf.Tensor:
   """A dummy activation that is the identity."""
