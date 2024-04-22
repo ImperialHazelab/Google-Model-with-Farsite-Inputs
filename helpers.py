@@ -52,8 +52,8 @@ class Farsite2Google:
         slope=Farsite2Google.get_asc_file(self.rootPath, "slope.asc")
         aspect=Farsite2Google.get_asc_file(self.rootPath, "aspect.asc")
         
-        slope_North=slope*np.sin(np.radians(aspect))
-        slope_East=slope*np.cos(np.radians(aspect))
+        slope_North=slope*np.cos(np.radians(aspect))
+        slope_East=slope*np.sin(np.radians(aspect))
                 
         return np.tan(np.radians(slope_North)), np.tan(np.radians(slope_East))
     
@@ -75,8 +75,8 @@ class Farsite2Google:
         for i in range(self.duration):
             
             windMag, windDir = self._get_wind_profile_at_time(datetime, wxs)
-            wind_N=windMag*np.cos(np.radians(windDir))
-            wind_E=-1*windMag*np.sin(np.radians(windDir))
+            wind_N=windMag*np.cos(np.radians(180+windDir))
+            wind_E=windMag*np.sin(np.radians(180+windDir))
             if datetime[3]==2300:
                 datetime[3]=0
                 datetime[2]=datetime[2]+1
@@ -433,4 +433,6 @@ class Farsite2Google:
     
                 # Save the DataFrame to a separate sheet in the Excel file
                 df.to_excel(writer, sheet_name=f'Sheet_{sheet_num}', index=False, header=False)
+                
+                
     
